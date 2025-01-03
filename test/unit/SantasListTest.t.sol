@@ -7,7 +7,7 @@ import {Test} from "forge-std/Test.sol";
 import {_CheatCodes} from "../mocks/CheatCodes.t.sol";
 
 contract SantasListTest is Test {
-    SantasList santasList;
+    SantasList santasList; 
     SantaToken santaToken;
 
     address user = makeAddr("user");
