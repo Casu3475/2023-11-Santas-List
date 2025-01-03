@@ -67,7 +67,7 @@ contract SantasList is ERC721, TokenUri {
                                  TYPES
     //////////////////////////////////////////////////////////////*/
     enum Status {
-        NICE,
+        NICE, // 0
         EXTRA_NICE,
         NAUGHTY,
         NOT_CHECKED_TWICE
@@ -76,8 +76,9 @@ contract SantasList is ERC721, TokenUri {
     /*//////////////////////////////////////////////////////////////
                             STATE VARIABLES
     //////////////////////////////////////////////////////////////*/
-    mapping(address person => Status naughtyOrNice) private s_theListCheckedOnce;
+    mapping(address person => Status naughtyOrNice) private s_theListCheckedOnce; 
     mapping(address person => Status naughtyOrNice) private s_theListCheckedTwice;
+    // @audit both mappings `s_theListCheckedOnce` and `s_theListCheckedTwice` consider every existent address as `NICE`, see the collectPresent function !!
     address private immutable i_santa;
     uint256 private s_tokenCounter;
     SantaToken private immutable i_santaToken;
@@ -119,7 +120,7 @@ contract SantasList is ERC721, TokenUri {
      * @param status The status of the person
      */
 
-    // @audit eveveryone can call this function ?
+    // @audit eveveryone can call this function ? access control vulnerability
     function checkList(address person, Status status) external {
         s_theListCheckedOnce[person] = status;
         emit CheckedOnce(person, status);
@@ -150,9 +151,11 @@ contract SantasList is ERC721, TokenUri {
         if (block.timestamp < CHRISTMAS_2023_BLOCK_TIME) {
             revert SantasList__NotChristmasYet();
         }
+        // @audit there is an issue with this check. Users could send their newly minted NFTs to another wallet, allowing them to pass that check as `balanceOf(msg.sender)` will be `0` after transferring the NFT.
         if (balanceOf(msg.sender) > 0) {
             revert SantasList__AlreadyCollected();
         }
+        // @audit NICE BY DEFAULT ?
         if (s_theListCheckedOnce[msg.sender] == Status.NICE && s_theListCheckedTwice[msg.sender] == Status.NICE) {
             _mintAndIncrement();
             return;
@@ -172,6 +175,8 @@ contract SantasList is ERC721, TokenUri {
      * @dev You'll first need to approve the SantasList contract to spend your SantaTokens.
      */
      // A function that trades 2e18 of SantaToken for an NFT. This function can be called by anyone.
+     // @audit the function burns the balance from `presentReceiver` instead of the caller i.e. `msg.sender`
+     // => an attacker can specify any address for the `presentReceiver` that has approved or not the SantasToken to be spent by the SantasList contract, and as they are the caller of the function, they will get the NFT while burning the SantasToken balance of the address specified in `presentReceiver`.
     function buyPresent(address presentReceiver) external {
         i_santaToken.burn(presentReceiver);
         _mintAndIncrement();
