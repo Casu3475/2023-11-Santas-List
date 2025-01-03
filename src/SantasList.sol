@@ -169,6 +169,7 @@ contract SantasList is ERC721, TokenUri {
      * @notice Buy a present for someone else. This should only be callable by anyone with SantaTokens.
      * @dev You'll first need to approve the SantasList contract to spend your SantaTokens.
      */
+     // A function that trades 2e18 of SantaToken for an NFT. This function can be called by anyone.
     function buyPresent(address presentReceiver) external {
         i_santaToken.burn(presentReceiver);
         _mintAndIncrement();
